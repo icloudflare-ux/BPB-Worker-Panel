@@ -225,7 +225,7 @@ function generateSubUrl(path, app, tag, singboxType) {
     app && url.searchParams.append('app', app);
 
     if (tag) {
-        url.hash = `💦 BPB ${tag}`;
+        url.hash = `💦 مرتضی ${tag}`;
     }
 
     return singboxType
@@ -952,6 +952,30 @@ function validateEchConfig() {
     return true;
 }
 
+
+function validateConfigLimits() {
+    const maxUsers = Number(getElmValue('configMaxUsers'));
+    const durationDays = Number(getElmValue('configDurationDays'));
+    const volumeGb = Number(getElmValue('configVolumeGB'));
+
+    if (!Number.isInteger(maxUsers) || maxUsers < 1) {
+        alert('⛔ Max users per config should be an integer greater than 0.');
+        return false;
+    }
+
+    if (!Number.isInteger(durationDays) || durationDays < 0) {
+        alert('⛔ Time limit should be a non-negative integer (days).');
+        return false;
+    }
+
+    if (!Number.isFinite(volumeGb) || volumeGb < 0) {
+        alert('⛔ Volume limit should be a non-negative number (GB).');
+        return false;
+    }
+
+    return true;
+}
+
 function validateSettings() {
     const configForm = document.getElementById('configForm');
     const formData = new FormData(configForm);
@@ -980,7 +1004,8 @@ function validateSettings() {
         validateKnockerNoise(),
         validateXrayNoises(fields),
         validateCustomRules(),
-        validateEchConfig()
+        validateEchConfig(),
+        validateConfigLimits()
     ];
 
     if (!validations.every(Boolean)) {

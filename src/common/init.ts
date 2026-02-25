@@ -9,7 +9,7 @@ globalThis.dict = {
     _TR_CAP_: atob('VHJvamFu'),
     _SS_: atob('c2hhZG93c29ja3M='),
     _V2_: atob('djJyYXk='),
-    _project_: atob('QlBC'),
+    _project_: atob('2YXYsdiq2LbbjA=='),
     _website_: atob('aHR0cHM6Ly9iaWEtcGFpbi1iYWNoZS5naXRodWIuaW8vQlBCLVdvcmtlci1QYW5lbC8='),
     _public_proxy_ip_: atob('YnBiLnlvdXNlZi5pc2VnYXJvLmNvbQ==')
 };
@@ -38,6 +38,9 @@ globalThis.settings = {
     customCdnHost: "",
     customCdnSni: "",
     bestVLTRInterval: 30,
+    configMaxUsers: 1,
+    configDurationDays: 0,
+    configVolumeGB: 0,
     VLConfigs: true,
     TRConfigs: true,
     ports: [443],
