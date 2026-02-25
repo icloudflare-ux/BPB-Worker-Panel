@@ -562,7 +562,10 @@ export async function getURLConfigs() {
             VLConfigs,
             TRConfigs,
             outProxy,
-            remoteDNS
+            remoteDNS,
+            configMaxUsers,
+            configDurationDays,
+            configVolumeGB
         }
     } = globalThis;
 
@@ -643,7 +646,11 @@ export async function getURLConfigs() {
         }
     }
 
+    const now = Math.floor(Date.now() / 1000);
+    const expire = configDurationDays > 0 ? now + (configDurationDays * 86400) : 0;
+    const total = configVolumeGB > 0 ? Math.floor(configVolumeGB * 1024 * 1024 * 1024) : 0;
     const configs = btoa(VLConfs + TRConfs + chainProxy);
+
     return new Response(configs, {
         status: 200,
         headers: {
@@ -651,7 +658,9 @@ export async function getURLConfigs() {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'CDN-Cache-Control': 'no-store',
             'Profile-Title': `base64:${base64EncodeUtf8(`💦 ${_project_} Raw`)}`,
-            'DNS': remoteDNS
+            'DNS': remoteDNS,
+            'Subscription-Userinfo': `upload=0; download=0; total=${total}; expire=${expire}`,
+            'X-Max-Users': `${configMaxUsers}`
         }
     });
 }

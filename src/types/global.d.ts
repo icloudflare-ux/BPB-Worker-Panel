@@ -83,6 +83,9 @@ declare global {
         customCdnHost: string;
         customCdnSni: string;
         bestVLTRInterval: number;
+        configMaxUsers: number;
+        configDurationDays: number;
+        configVolumeGB: number;
         VLConfigs: boolean;
         TRConfigs: boolean;
         ports: number[];

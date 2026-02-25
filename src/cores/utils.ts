@@ -74,7 +74,13 @@ export function generateRemark(
     isChain: boolean
 ): string {
     const {
-        settings: { cleanIPs, customCdnAddrs },
+        settings: {
+            cleanIPs,
+            customCdnAddrs,
+            configMaxUsers,
+            configDurationDays,
+            configVolumeGB
+        },
         dict: { _VL_, _VL_CAP_, _TR_CAP_ }
     } = globalThis;
 
@@ -88,7 +94,8 @@ export function generateRemark(
         ? addressType = 'Clean IP'
         : addressType = isDomain(address) ? 'Domain' : isIPv4(address) ? 'IPv4' : isIPv6(address) ? 'IPv6' : '';
 
-    return `💦 ${index} - ${chainSign}${protoSign}${configType} - ${addressType} : ${port}`;
+    const limitTag = ` 👥${configMaxUsers} | ⏳${configDurationDays || '∞'}d | 📦${configVolumeGB || '∞'}GB`;
+    return `💦 ${index} - ${chainSign}${protoSign}${configType} - ${addressType} : ${port}${limitTag}`;
 }
 
 export function randomUpperCase(str: string): string {
