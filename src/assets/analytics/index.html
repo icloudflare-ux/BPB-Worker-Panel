@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics | مرتضی v__VERSION__</title>
+    <link rel="icon" href="/favicon.ico" />
+    __STYLE__
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Analytics / Users</h1>
+        <p class="subtitle">Session history + Daily usage trend</p>
+
+        <div class="cards">
+            <div class="card"><span>Used</span><strong id="used">-</strong></div>
+            <div class="card"><span>Remaining</span><strong id="remaining">-</strong></div>
+            <div class="card"><span>Days left</span><strong id="days-left">-</strong></div>
+            <div class="card"><span>Active users</span><strong id="active-users">-</strong></div>
+        </div>
+
+        <h2>Daily usage (last 14 days)</h2>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Usage (GB)</th></tr>
+            </thead>
+            <tbody id="daily-usage"></tbody>
+        </table>
+
+        <h2>Session history (last 50)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Type</th>
+                    <th>User</th>
+                    <th>Session ID</th>
+                    <th>Bytes</th>
+                    <th>Duration (s)</th>
+                    <th>Active</th>
+                </tr>
+            </thead>
+            <tbody id="session-history"></tbody>
+        </table>
+
+        <a href="/panel">← Back to Panel</a>
+    </div>
+
+    <script>__SCRIPT__</script>
+</body>
+
+</html>

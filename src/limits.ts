@@ -1,6 +1,7 @@
 const ACTIVE_SESSIONS_KEY = 'limits:active-sessions';
 const USAGE_BYTES_KEY = 'limits:usage-bytes';
 const LAST_RESET_KEY = 'limits:last-reset';
+const SESSION_HISTORY_KEY = 'limits:session-history';
 
 interface SessionGuard {
     allow: boolean;
@@ -13,7 +14,7 @@ interface SessionGuard {
 export async function createSessionGuard(): Promise<SessionGuard> {
     const {
         settings: { configMaxUsers, configDurationDays, configVolumeGB },
-        globalConfig: { kv }
+        globalConfig: { kv, userID }
     } = globalThis;
 
     const now = Date.now();
@@ -40,14 +41,30 @@ export async function createSessionGuard(): Promise<SessionGuard> {
 
     await kv.put(ACTIVE_SESSIONS_KEY, String(activeSessions + 1));
 
+    const sessionId = crypto.randomUUID();
+    await appendSessionHistory(kv, {
+        timestamp: now,
+        type: 'start',
+        userID,
+        sessionId,
+        activeSessions: activeSessions + 1
+    });
+
     let isClosed = false;
     let bufferedBytes = 0;
+    let sessionBytes = 0;
 
     const flushUsage = async () => {
         if (!bufferedBytes) return;
 
         const latestUsage = await getNumber(kv, USAGE_BYTES_KEY);
         await kv.put(USAGE_BYTES_KEY, String(latestUsage + bufferedBytes));
+
+        const day = new Date().toISOString().slice(0, 10);
+        const dailyKey = `limits:daily:${day}`;
+        const dailyUsage = await getNumber(kv, dailyKey);
+        await kv.put(dailyKey, String(dailyUsage + bufferedBytes));
+
         bufferedBytes = 0;
     };
 
@@ -55,6 +72,7 @@ export async function createSessionGuard(): Promise<SessionGuard> {
         if (!Number.isFinite(bytes) || bytes <= 0) return;
 
         bufferedBytes += bytes;
+        sessionBytes += bytes;
         const shouldFlush = bufferedBytes >= 64 * 1024;
 
         if (shouldFlush) {
@@ -83,7 +101,18 @@ export async function createSessionGuard(): Promise<SessionGuard> {
 
             await flushUsage();
             const latestActive = await getNumber(kv, ACTIVE_SESSIONS_KEY);
-            await kv.put(ACTIVE_SESSIONS_KEY, String(Math.max(latestActive - 1, 0)));
+            const finalActive = Math.max(latestActive - 1, 0);
+            await kv.put(ACTIVE_SESSIONS_KEY, String(finalActive));
+
+            await appendSessionHistory(kv, {
+                timestamp: Date.now(),
+                type: 'end',
+                userID,
+                sessionId,
+                bytes: sessionBytes,
+                durationSec: Math.max(1, Math.floor((Date.now() - now) / 1000)),
+                activeSessions: finalActive
+            });
         }
     };
 
@@ -114,4 +143,11 @@ async function getNumber(kv: KVNamespace, key: string) {
     const value = await kv.get(key);
     const parsed = Number(value ?? 0);
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function appendSessionHistory(kv: KVNamespace, entry: Record<string, any>) {
+    const historyRaw = await kv.get(SESSION_HISTORY_KEY);
+    const history = historyRaw ? JSON.parse(historyRaw) : [];
+    history.unshift(entry);
+    await kv.put(SESSION_HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
 }

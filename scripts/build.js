@@ -105,6 +105,7 @@ async function buildWorker() {
             __ERROR_HTML_CONTENT__: htmls['error'] ?? '""',
             __SECRETS_HTML_CONTENT__: htmls['secrets'] ?? '""',
             __PROXY_IP_HTML_CONTENT__: htmls['proxy-ip'] ?? '""',
+            __ANALYTICS_HTML_CONTENT__: htmls['analytics'] ?? '""',
             __ICON__: JSON.stringify(faviconBase64),
             __VERSION__: JSON.stringify(version)
         }

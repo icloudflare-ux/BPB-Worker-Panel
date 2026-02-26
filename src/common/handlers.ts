@@ -68,6 +68,12 @@ export async function handlePanel(request: Request, env: Env): Promise<Response>
         case '/panel/get-warp-configs':
             return await getWarpConfigs(request, env);
 
+        case '/panel/analytics':
+            return await renderAnalytics(request, env);
+
+        case '/panel/analytics/data':
+            return await getAnalyticsData(request, env);
+
         default:
             return await fallback(request);
     }
@@ -288,6 +294,66 @@ async function getSettings(request: Request, env: Env): Promise<Response> {
     };
 
     return respond(true, HttpStatus.OK, undefined, data);
+}
+
+
+async function renderAnalytics(request: Request, env: Env): Promise<Response> {
+    const auth = await Authenticate(request, env);
+
+    if (!auth) {
+        const { urlOrigin } = globalThis.httpConfig;
+        return Response.redirect(`${urlOrigin}/login`, 302);
+    }
+
+    const html = await decompressHtml(__ANALYTICS_HTML_CONTENT__, false);
+
+    return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    });
+}
+
+async function getAnalyticsData(request: Request, env: Env): Promise<Response> {
+    const auth = await Authenticate(request, env);
+
+    if (!auth) {
+        return respond(false, HttpStatus.UNAUTHORIZED, 'Unauthorized or expired session.');
+    }
+
+    const dataset = await getDataset(request, env);
+    const usageBytes = Number(await env.kv.get('limits:usage-bytes')) || 0;
+    const activeSessions = Number(await env.kv.get('limits:active-sessions')) || 0;
+    const nowMs = Date.now();
+    const createdAtRaw = Number(await env.kv.get('limits:last-reset'));
+    const createdAtMs = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : nowMs;
+    const { configDurationDays, configVolumeGB, configMaxUsers } = dataset.settings;
+    const expireAtMs = configDurationDays > 0 ? createdAtMs + (configDurationDays * 86400 * 1000) : 0;
+    const remainingDays = expireAtMs > 0 ? Math.max(0, Math.ceil((expireAtMs - nowMs) / 86400000)) : -1;
+    const totalBytes = configVolumeGB > 0 ? Math.floor(configVolumeGB * 1024 * 1024 * 1024) : 0;
+    const remainingBytes = totalBytes > 0 ? Math.max(0, totalBytes - usageBytes) : -1;
+
+    const usageStats = {
+        usageBytes,
+        totalBytes,
+        remainingBytes,
+        remainingDays,
+        activeSessions,
+        maxUsers: configMaxUsers,
+        expireAt: expireAtMs
+    };
+
+    const historyRaw = await env.kv.get('limits:session-history');
+    const sessionHistory = historyRaw ? JSON.parse(historyRaw) : [];
+
+    const dailyUsage = [];
+
+    for (let i = 13; i >= 0; i--) {
+        const dayMs = nowMs - (i * 86400000);
+        const date = new Date(dayMs).toISOString().slice(0, 10);
+        const bytes = Number(await env.kv.get(`limits:daily:${date}`)) || 0;
+        dailyUsage.push({ date, bytes });
+    }
+
+    return respond(true, HttpStatus.OK, '', { usageStats, dailyUsage, sessionHistory });
 }
 
 export async function fallback(request: Request): Promise<Response> {
