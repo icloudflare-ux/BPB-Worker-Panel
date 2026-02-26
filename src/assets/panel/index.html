@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BPB Panel v__VERSION__</title>
+    <title>مرتضی v__VERSION__</title>
     <link rel="icon" href="/favicon.ico" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <link rel="stylesheet"
@@ -14,7 +14,7 @@
 
 <body>
     <h1>
-        <img class="icon" src="/favicon.ico" alt="BPB Logo"> BPB Panel <span id="panel-version"
+        <img class="icon" src="/favicon.ico" alt="BPB Logo"> مرتضی <span id="panel-version"
             style="font-size: smaller;">
             v__VERSION__
         </span>
@@ -169,6 +169,24 @@
                         <label for="bestVLTRInterval">🔄 Best Interval</label>
                         <div>
                             <input type="number" id="bestVLTRInterval" name="bestVLTRInterval" min="10" max="90">
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label for="configMaxUsers">👥 Max users per config</label>
+                        <div>
+                            <input type="number" id="configMaxUsers" name="configMaxUsers" min="1" max="500">
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label for="configDurationDays">⏳ Time limit (days)</label>
+                        <div>
+                            <input type="number" id="configDurationDays" name="configDurationDays" min="0" max="3650">
+                        </div>
+                    </div>
+                    <div class="form-control">
+                        <label for="configVolumeGB">📦 Volume limit (GB)</label>
+                        <div>
+                            <input type="number" id="configVolumeGB" name="configVolumeGB" min="0" max="100000">
                         </div>
                     </div>
                     <div class="form-control">

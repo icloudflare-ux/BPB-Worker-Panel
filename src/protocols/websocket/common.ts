@@ -11,7 +11,8 @@ export async function handleTCPOutBound(
     rawClientData: ArrayBuffer | undefined,
     webSocket: WebSocket,
     VLResponseHeader: Uint8Array<ArrayBuffer> | null,
-    log: Function
+    log: Function,
+    onOutboundBytes?: (bytes: number) => void | Promise<void>
 ) {
     async function connectAndWrite(address: string, port: number): Promise<Socket> {
         // if (/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(address)) address = `${atob('d3d3Lg==')}${address}${atob('LnNzbGlwLmlv')}`;
@@ -24,6 +25,7 @@ export async function handleTCPOutBound(
         log(`connected to ${address}:${port}`);
         const writer = tcpSocket.writable.getWriter();
         await writer.write(rawClientData);
+        if (rawClientData) await onOutboundBytes?.(rawClientData.byteLength);
         writer.releaseLock();
         return tcpSocket;
     }
@@ -67,7 +69,7 @@ export async function handleTCPOutBound(
                 .catch(error => console.log('retry TCP socket closed error', error))
                 .finally(() => safeCloseWebSocket(webSocket));
 
-            remoteSocketToWS(tcpSocket, webSocket, VLResponseHeader, null, log);
+            remoteSocketToWS(tcpSocket, webSocket, VLResponseHeader, null, log, onOutboundBytes);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error('Retry connection failed:', error);
@@ -77,7 +79,7 @@ export async function handleTCPOutBound(
 
     try {
         const tcpSocket = await connectAndWrite(addressRemote, portRemote);
-        remoteSocketToWS(tcpSocket, webSocket, VLResponseHeader, retry, log);
+        remoteSocketToWS(tcpSocket, webSocket, VLResponseHeader, retry, log, onOutboundBytes);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`Connection failed: ${error}`);
@@ -90,7 +92,8 @@ async function remoteSocketToWS(
     webSocket: WebSocket,
     VLResponseHeader: Uint8Array<ArrayBuffer> | null,
     retry: Function | null,
-    log: Function
+    log: Function,
+    onInboundBytes?: (bytes: number) => void | Promise<void>
 ) {
     let vlHeader = VLResponseHeader;
     let hasIncomingData = false;
@@ -109,6 +112,8 @@ async function remoteSocketToWS(
             } else {
                 webSocket.send(chunk);
             }
+
+            await onInboundBytes?.(chunk.byteLength ?? 0);
         },
         close() {
             log(`remoteConnection.readable is close with hasIncomingData is ${hasIncomingData}`);
@@ -133,7 +138,12 @@ async function remoteSocketToWS(
     }
 }
 
-export function makeReadableWebSocketStream(webSocketServer: WebSocket, earlyDataHeader: string, log: Function) {
+export function makeReadableWebSocketStream(
+    webSocketServer: WebSocket,
+    earlyDataHeader: string,
+    log: Function,
+    onClose?: () => void | Promise<void>
+) {
     let readableStreamCancel = false;
     const stream = new ReadableStream({
         start(controller) {
@@ -145,6 +155,7 @@ export function makeReadableWebSocketStream(webSocketServer: WebSocket, earlyDat
 
             webSocketServer.addEventListener("close", () => {
                 safeCloseWebSocket(webSocketServer);
+                void onClose?.();
                 if (readableStreamCancel) return;
                 controller.close();
             });
@@ -167,6 +178,7 @@ export function makeReadableWebSocketStream(webSocketServer: WebSocket, earlyDat
             if (readableStreamCancel) return;
             log(`ReadableStream was canceled, due to ${reason}`);
             readableStreamCancel = true;
+            void onClose?.();
             safeCloseWebSocket(webSocketServer);
         }
     });

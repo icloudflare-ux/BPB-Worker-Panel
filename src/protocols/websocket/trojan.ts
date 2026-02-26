@@ -3,6 +3,7 @@ import {
     makeReadableWebSocketStream,
     safeCloseTcpSocket
 } from './common';
+import { createSessionGuard } from '../../limits';
 
 export async function TrOverWSHandler(request: Request): Promise<Response> {
     const webSocketPair = new WebSocketPair();
@@ -16,8 +17,19 @@ export async function TrOverWSHandler(request: Request): Promise<Response> {
         console.log(`[${address}:${portWithRandomLog}] ${info}`, event || "");
     };
 
+    const sessionGuard = await createSessionGuard();
+
+    if (!sessionGuard.allow) {
+        return new Response(sessionGuard.reason ?? 'Forbidden', { status: 403 });
+    }
+
     const earlyDataHeader = request.headers.get("sec-websocket-protocol") || "";
-    const readableWebSocketStream = makeReadableWebSocketStream(webSocket, earlyDataHeader, log);
+    const readableWebSocketStream = makeReadableWebSocketStream(
+        webSocket,
+        earlyDataHeader,
+        log,
+        () => sessionGuard.close()
+    );
 
     let remoteSocketWapper: { value: any } = { value: null };
     let udpStreamWrite: any = null;
@@ -31,6 +43,7 @@ export async function TrOverWSHandler(request: Request): Promise<Response> {
             if (remoteSocketWapper.value) {
                 const writer = remoteSocketWapper.value.writable.getWriter();
                 await writer.write(chunk);
+                await sessionGuard.commitOutboundBytes(chunk.byteLength ?? 0);
                 writer.releaseLock();
                 return;
             }
@@ -57,7 +70,8 @@ export async function TrOverWSHandler(request: Request): Promise<Response> {
                 rawClientData,
                 webSocket,
                 null,
-                log
+                log,
+                (bytes: number) => sessionGuard.commitInboundBytes(bytes)
             );
         },
         close() {
@@ -70,9 +84,10 @@ export async function TrOverWSHandler(request: Request): Promise<Response> {
 
     readableWebSocketStream
         .pipeTo(writableStream)
-        .catch(error => {
+        .catch(async error => {
             log("readableWebSocketStream pipeTo error", error);
             safeCloseTcpSocket(remoteSocketWapper.value);
+            await sessionGuard.close();
         });
 
     return new Response(null, {

@@ -158,6 +158,7 @@ async function buildWorker() {
     const worker = `${buildInfo}// @ts-nocheck\n${finalCode}`;
     mkdirSync(DIST_PATH, { recursive: true });
     writeFileSync('./dist/worker.js', worker, 'utf8');
+    writeFileSync('./worker.js', worker, 'utf8');
 
     const zip = new JSZip();
     zip.file('_worker.js', worker);
@@ -173,4 +174,3 @@ buildWorker().catch(err => {
     console.error(`${failure} Build failed:`, err);
     process.exit(1);
 });
-

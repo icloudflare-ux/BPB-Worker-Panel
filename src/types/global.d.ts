@@ -5,6 +5,7 @@ declare global {
         readonly pathName: string;
         readonly fallbackDomain: string;
         readonly dohURL: string;
+        readonly kv: KVNamespace;
     }
 
     interface HttpConfig {
@@ -83,6 +84,9 @@ declare global {
         customCdnHost: string;
         customCdnSni: string;
         bestVLTRInterval: number;
+        configMaxUsers: number;
+        configDurationDays: number;
+        configVolumeGB: number;
         VLConfigs: boolean;
         TRConfigs: boolean;
         ports: number[];
