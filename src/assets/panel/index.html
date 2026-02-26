@@ -23,7 +23,7 @@
         <h2><span class="material-symbols-rounded">settings</span> Settings</h2>
         <div class="container usage-dashboard">
             <div class="section">
-                <h4><span class="material-symbols-rounded">verified</span> Subscription Overview</h4>
+                <h4><span class="material-symbols-rounded">verified</span> Subscription Overview (<span id="overview-user">Global</span>)</h4>
                 <div class="usage-grid">
                     <div class="usage-card"><span>Used</span><strong id="usage-used">-</strong></div>
                     <div class="usage-card"><span>Remaining</span><strong id="usage-remaining">-</strong></div>
@@ -37,6 +37,7 @@
             <div class="section">
                 <h4><span class="material-symbols-rounded">terminal</span> Custom Config Generator</h4>
                 <div class="usage-grid">
+                    <div class="usage-card"><span>Saved users</span><select id="savedUsers" onchange="onSavedUserChange()"><option value="">-- Select --</option></select></div>
                     <div class="usage-card"><span>User name</span><input type="text" id="genUser" placeholder="e.g. ali" /></div>
                     <div class="usage-card"><span>Protocol</span><select id="genProtocol"><option value="vl">VLESS</option><option value="tr">Trojan</option><option value="warp">Warp</option><option value="warp-pro">Warp Pro</option></select></div>
                     <div class="usage-card"><span>Client</span><select id="genClient"><option value="xray">xray</option><option value="sing-box">sing-box</option><option value="clash">clash</option></select></div>
@@ -44,7 +45,7 @@
                     <div class="usage-card"><span>Users</span><input type="number" id="genUsers" min="1" value="1" /></div>
                     <div class="usage-card"><span>Days</span><input type="number" id="genDays" min="0" value="30" /></div>
                     <div class="usage-card"><span>Volume (GB)</span><input type="number" id="genGb" min="0" value="30" /></div>
-                    <div class="usage-card"><span>Share</span><button type="button" class="button" onclick="copyCustomSubLink()">Copy Custom Link</button></div>
+                    <div class="usage-card"><span>Actions</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="button" onclick="copyCustomSubLink()">Copy Link</button><button type="button" class="button" onclick="downloadCustomConfig()">Download</button><button type="button" class="button" onclick="openCustomQR()">QR</button><button type="button" class="button" onclick="saveUserProfile()">Save</button><button type="button" class="button reverse" onclick="deleteUserProfile()">Delete</button></div></div>
                 </div>
             </div>
         </div>

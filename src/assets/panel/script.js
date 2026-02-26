@@ -31,9 +31,9 @@ fetch('/panel/settings')
             throw new Error(`status ${status} - ${message}`);
         }
 
-        const { subPath, proxySettings, usageStats } = body;
+        const { subPath, proxySettings, usageStats, users } = body;
         globalThis.subPath = encodeURIComponent(subPath);
-        initiatePanel(proxySettings, usageStats);
+        initiatePanel(proxySettings, usageStats, users);
     })
     .catch(error => console.error("Data query error:", error.message || error))
     .finally(() => {
@@ -57,7 +57,7 @@ fetch('/panel/settings')
         });
     });
 
-function initiatePanel(proxySettings, usageStats) {
+function initiatePanel(proxySettings, usageStats, users) {
     const {
         VLConfigs,
         TRConfigs,
@@ -73,6 +73,7 @@ function initiatePanel(proxySettings, usageStats) {
 
     populatePanel(proxySettings);
     renderUsageDashboard(usageStats);
+    renderSavedUsers(users || []);
     renderPortsBlock(ports.map(Number));
     renderUdpNoiseBlock(xrayUdpNoises);
     initiateForm();
@@ -1331,7 +1332,100 @@ function renderUdpNoiseBlock(xrayUdpNoises) {
     globalThis.xrayNoiseCount = xrayUdpNoises.length;
 }
 
-function copyCustomSubLink() {
+
+function renderSavedUsers(users) {
+    globalThis.savedUsers = users;
+    const select = document.getElementById('savedUsers');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Select --</option>';
+    users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = `${user.name} (${user.protocol.toUpperCase()} | ${user.days}d | ${user.gb}GB)`;
+        select.appendChild(option);
+    });
+}
+
+async function onSavedUserChange() {
+    const id = getElmValue('savedUsers');
+    const user = (globalThis.savedUsers || []).find(item => item.id === id);
+    if (!user) return;
+
+    document.getElementById('genUser').value = user.name;
+    document.getElementById('genProtocol').value = user.protocol;
+    document.getElementById('genClient').value = user.client;
+    document.getElementById('genType').value = user.type;
+    document.getElementById('genUsers').value = user.users;
+    document.getElementById('genDays').value = user.days;
+    document.getElementById('genGb').value = user.gb;
+
+    await refreshOverviewForUser(user.name);
+}
+
+async function refreshOverviewForUser(name) {
+    const response = await fetch(`/panel/profile-stats?name=${encodeURIComponent(name)}`);
+    const { success, body } = await response.json();
+    if (!success) return;
+
+    renderUsageDashboard(body);
+    const overviewUser = document.getElementById('overview-user');
+    if (overviewUser) overviewUser.textContent = name;
+}
+
+async function saveUserProfile() {
+    const payload = {
+        id: getElmValue('savedUsers') || undefined,
+        name: getElmValue('genUser').trim(),
+        protocol: getElmValue('genProtocol'),
+        client: getElmValue('genClient'),
+        type: getElmValue('genType'),
+        users: Number(getElmValue('genUsers')),
+        days: Number(getElmValue('genDays')),
+        gb: Number(getElmValue('genGb'))
+    };
+
+    if (!payload.name) {
+        alert('User name is required.');
+        return;
+    }
+
+    const response = await fetch('/panel/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+        alert(data.message || 'save failed');
+        return;
+    }
+
+    const usersResponse = await fetch('/panel/users');
+    const usersData = await usersResponse.json();
+    renderSavedUsers(usersData.body || []);
+    alert('User profile saved ✅');
+}
+
+async function deleteUserProfile() {
+    const id = getElmValue('savedUsers');
+    if (!id) return;
+
+    await fetch('/panel/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+
+    const usersResponse = await fetch('/panel/users');
+    const usersData = await usersResponse.json();
+    renderSavedUsers(usersData.body || []);
+    document.getElementById('savedUsers').value = '';
+    alert('User profile deleted 🗑️');
+}
+
+function buildCustomSubUrl() {
     const protocol = getElmValue('genProtocol');
     const client = getElmValue('genClient');
     const type = getElmValue('genType');
@@ -1352,5 +1446,56 @@ function copyCustomSubLink() {
         url.searchParams.set('gb', gb);
     }
 
+    return url;
+}
+
+async function downloadCustomConfig() {
+    const url = buildCustomSubUrl();
+
+    try {
+        const response = await fetch(url.href);
+        const data = await response.text();
+
+        if (!response.ok) {
+            throw new Error(`status ${response.status} at ${response.url} - ${data}`);
+        }
+
+        downloadJSON(data, `${getElmValue('genUser') || 'custom'}-config.json`);
+    } catch (error) {
+        console.error("Download error:", error.message || error);
+    }
+}
+
+function openCustomQR() {
+    const qrModal = document.getElementById('qrModal');
+    const qrcodeContainer = document.getElementById('qrcode-container');
+    let qrcodeTitle = document.getElementById("qrcodeTitle");
+    qrcodeTitle.textContent = 'Custom Subscription';
+
+    if (qrcodeContainer.lastElementChild) {
+        qrcodeContainer.lastElementChild.remove();
+    }
+
+    const qrcodeDiv = document.createElement("div");
+    qrcodeDiv.className = "qrcode";
+    qrcodeDiv.style.padding = "2px";
+    qrcodeDiv.style.backgroundColor = "#ffffff";
+
+    /* global QRCode */
+    new QRCode(qrcodeDiv, {
+        text: buildCustomSubUrl().href,
+        width: 256,
+        height: 256,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+
+    qrcodeContainer.appendChild(qrcodeDiv);
+    qrModal.style.display = "flex";
+}
+
+function copyCustomSubLink() {
+    const url = buildCustomSubUrl();
     copyToClipboard(url.href);
 }

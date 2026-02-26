@@ -16,12 +16,16 @@ export async function handleWebsocket(request: Request): Promise<Response> {
     const encodedPathConfig = pathName.replace("/", "");
 
     try {
-        const { protocol, mode, panelIPs } = JSON.parse(atob(encodedPathConfig));
+        const { protocol, mode, panelIPs, profile, users, days, gb } = JSON.parse(atob(encodedPathConfig));
         globalThis.wsConfig = {
             ...globalThis.wsConfig,
             wsProtocol: protocol,
             proxyMode: mode,
-            panelIPs: panelIPs
+            panelIPs: panelIPs,
+            profile: profile || undefined,
+            profileUsersLimit: users || undefined,
+            profileDurationDays: days || undefined,
+            profileVolumeGB: gb || undefined
         };
 
         switch (protocol) {
@@ -74,9 +78,35 @@ export async function handlePanel(request: Request, env: Env): Promise<Response>
         case '/panel/analytics/data':
             return await getAnalyticsData(request, env);
 
+        case '/panel/users':
+            return await handleUsers(request, env);
+
+        case '/panel/profile-stats':
+            return await getProfileStats(request, env);
+
         default:
             return await fallback(request);
     }
+}
+
+function applyProtocolFilter(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const protocol = searchParams.get('protocol');
+    const originalVL = globalThis.settings.VLConfigs;
+    const originalTR = globalThis.settings.TRConfigs;
+
+    if (protocol === 'vl') {
+        globalThis.settings.VLConfigs = true;
+        globalThis.settings.TRConfigs = false;
+    } else if (protocol === 'tr') {
+        globalThis.settings.VLConfigs = false;
+        globalThis.settings.TRConfigs = true;
+    }
+
+    return () => {
+        globalThis.settings.VLConfigs = originalVL;
+        globalThis.settings.TRConfigs = originalTR;
+    };
 }
 
 export async function handleProxyIPs(request: Request, env: Env): Promise<Response> {
@@ -142,81 +172,86 @@ export function logout(): Response {
 
 export async function handleSubscriptions(request: Request, env: Env): Promise<Response> {
     await setSettings(request, env);
+    const restoreProtocolFilter = applyProtocolFilter(request);
     const {
         globalConfig: { pathName },
         httpConfig: { client, subPath }
     } = globalThis;
 
-    switch (pathName) {
-        case `/sub/normal/${subPath}`:
-            switch (client) {
-                case 'xray':
-                    return await getXrCustomConfigs(false);
+    try {
+        switch (pathName) {
+            case `/sub/normal/${subPath}`:
+                switch (client) {
+                    case 'xray':
+                        return await getXrCustomConfigs(false);
 
-                case 'sing-box':
-                    return await getSbCustomConfig(false);
+                    case 'sing-box':
+                        return await getSbCustomConfig(false);
 
-                case 'clash':
-                    return await getClNormalConfig();
+                    case 'clash':
+                        return await getClNormalConfig();
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-        case `/sub/raw/${subPath}`:
-            switch (client) {
-                case 'xray':
-                case 'sing-box':
-                    return await getURLConfigs(request);
+            case `/sub/raw/${subPath}`:
+                switch (client) {
+                    case 'xray':
+                    case 'sing-box':
+                        return await getURLConfigs(request);
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-        case `/sub/fragment/${subPath}`:
-            switch (client) {
-                case 'xray':
-                    return await getXrCustomConfigs(true);
+            case `/sub/fragment/${subPath}`:
+                switch (client) {
+                    case 'xray':
+                        return await getXrCustomConfigs(true);
 
-                case 'sing-box':
-                    return await getSbCustomConfig(true);
+                    case 'sing-box':
+                        return await getSbCustomConfig(true);
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-        case `/sub/warp/${subPath}`:
-            switch (client) {
-                case 'xray':
-                    return await getXrWarpConfigs(request, env, false, false);
+            case `/sub/warp/${subPath}`:
+                switch (client) {
+                    case 'xray':
+                        return await getXrWarpConfigs(request, env, false, false);
 
-                case 'sing-box':
-                    return await getSbWarpConfig(request, env);
+                    case 'sing-box':
+                        return await getSbWarpConfig(request, env);
 
-                case 'clash':
-                    return await getClWarpConfig(request, env, false);
+                    case 'clash':
+                        return await getClWarpConfig(request, env, false);
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-        case `/sub/warp-pro/${subPath}`:
-            switch (client) {
-                case 'xray':
-                    return await getXrWarpConfigs(request, env, true, false);
+            case `/sub/warp-pro/${subPath}`:
+                switch (client) {
+                    case 'xray':
+                        return await getXrWarpConfigs(request, env, true, false);
 
-                case 'xray-knocker':
-                    return await getXrWarpConfigs(request, env, true, true);
+                    case 'xray-knocker':
+                        return await getXrWarpConfigs(request, env, true, true);
 
-                case 'clash':
-                    return await getClWarpConfig(request, env, true);
+                    case 'clash':
+                        return await getClWarpConfig(request, env, true);
 
-                default:
-                    break;
-            }
+                    default:
+                        break;
+                }
 
-        default:
-            return await fallback(request);
+            default:
+                return await fallback(request);
+        }
+    } finally {
+        restoreProtocolFilter();
     }
 }
 
@@ -278,8 +313,11 @@ async function getSettings(request: Request, env: Env): Promise<Response> {
     const totalBytes = configVolumeGB > 0 ? Math.floor(configVolumeGB * 1024 * 1024 * 1024) : 0;
     const remainingBytes = totalBytes > 0 ? Math.max(0, totalBytes - usageBytes) : -1;
 
+    const users = await getUserProfiles(env.kv);
+
     const data = {
         proxySettings: dataset.settings,
+        users,
         usageStats: {
             usageBytes,
             totalBytes,
@@ -354,6 +392,82 @@ async function getAnalyticsData(request: Request, env: Env): Promise<Response> {
     }
 
     return respond(true, HttpStatus.OK, '', { usageStats, dailyUsage, sessionHistory });
+}
+
+
+async function handleUsers(request: Request, env: Env): Promise<Response> {
+    const auth = await Authenticate(request, env);
+    if (!auth) return respond(false, HttpStatus.UNAUTHORIZED, 'Unauthorized or expired session.');
+
+    if (request.method === 'GET') {
+        return respond(true, HttpStatus.OK, '', await getUserProfiles(env.kv));
+    }
+
+    const payload: any = await request.json();
+    const users = await getUserProfiles(env.kv);
+
+    if (request.method === 'POST') {
+        const user = {
+            id: payload.id || crypto.randomUUID(),
+            name: String(payload.name || '').trim(),
+            protocol: payload.protocol || 'vl',
+            type: payload.type || 'raw',
+            client: payload.client || 'xray',
+            users: Number(payload.users || 1),
+            days: Number(payload.days || 0),
+            gb: Number(payload.gb || 0),
+            createdAt: Date.now()
+        };
+
+        if (!user.name) return respond(false, HttpStatus.BAD_REQUEST, 'User name is required.');
+        const existsIndex = users.findIndex((u: any) => u.name === user.name || u.id === user.id);
+        if (existsIndex >= 0) users[existsIndex] = { ...users[existsIndex], ...user };
+        else users.unshift(user);
+
+        await env.kv.put('users:profiles', JSON.stringify(users.slice(0, 500)));
+        return respond(true, HttpStatus.OK, '', user);
+    }
+
+    if (request.method === 'DELETE') {
+        const id = String(payload.id || '');
+        const nextUsers = users.filter((u: any) => u.id !== id);
+        await env.kv.put('users:profiles', JSON.stringify(nextUsers));
+        return respond(true, HttpStatus.OK, '', { deleted: id });
+    }
+
+    return respond(false, HttpStatus.METHOD_NOT_ALLOWED, 'Method not allowed.');
+}
+
+async function getUserProfiles(kv: KVNamespace) {
+    const raw = await kv.get('users:profiles');
+    return raw ? JSON.parse(raw) : [];
+}
+
+async function getProfileStats(request: Request, env: Env): Promise<Response> {
+    const auth = await Authenticate(request, env);
+    if (!auth) return respond(false, HttpStatus.UNAUTHORIZED, 'Unauthorized or expired session.');
+
+    const name = new URL(request.url).searchParams.get('name')?.trim();
+    if (!name) return respond(false, HttpStatus.BAD_REQUEST, 'name is required');
+
+    const base = `limits:profile:${name}:`;
+    const usageBytes = Number(await env.kv.get(base + 'usage-bytes')) || 0;
+    const activeSessions = Number(await env.kv.get(base + 'active-sessions')) || 0;
+    const createdAtRaw = Number(await env.kv.get(base + 'last-reset'));
+
+    const users = await getUserProfiles(env.kv);
+    const profile = users.find((u: any) => u.name === name);
+    const nowMs = Date.now();
+    const createdAtMs = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : nowMs;
+    const days = Number(profile?.days || 0);
+    const gb = Number(profile?.gb || 0);
+    const maxUsers = Number(profile?.users || 1);
+    const expireAtMs = days > 0 ? createdAtMs + (days * 86400 * 1000) : 0;
+    const remainingDays = expireAtMs > 0 ? Math.max(0, Math.ceil((expireAtMs - nowMs) / 86400000)) : -1;
+    const totalBytes = gb > 0 ? Math.floor(gb * 1024 * 1024 * 1024) : 0;
+    const remainingBytes = totalBytes > 0 ? Math.max(0, totalBytes - usageBytes) : -1;
+
+    return respond(true, HttpStatus.OK, '', { usageBytes, totalBytes, remainingBytes, remainingDays, activeSessions, maxUsers, profile });
 }
 
 export async function fallback(request: Request): Promise<Response> {
@@ -679,7 +793,7 @@ export async function getURLConfigs(request: Request) {
             config.username = TrPass;
         }
 
-        const path = generateWsPath(protocol);
+        const path = generateWsPath(protocol, { profile: selectedUser, users: finalUsersLimit, days: finalDays, gb: finalVolumeGb });
         config.hostname = addr;
         config.port = port.toString();
         config.searchParams.append('host', host);

@@ -120,7 +120,7 @@ export function getRandomString(lengthMin: number, lengthMax: number): string {
     return result;
 }
 
-export function generateWsPath(protocol: string): string {
+export function generateWsPath(protocol: string, options?: { profile?: string; users?: number; days?: number; gb?: number }): string {
     const {
         settings: { proxyIPMode, proxyIPs, prefixes },
         dict: { _VL_ }
@@ -130,7 +130,11 @@ export function generateWsPath(protocol: string): string {
         junk: getRandomString(8, 16),
         protocol: protocol === _VL_ ? "vl" : "tr",
         mode: proxyIPMode,
-        panelIPs: proxyIPMode === 'proxyip' ? proxyIPs : prefixes
+        panelIPs: proxyIPMode === 'proxyip' ? proxyIPs : prefixes,
+        profile: options?.profile || undefined,
+        users: options?.users || undefined,
+        days: options?.days || undefined,
+        gb: options?.gb || undefined
     };
 
     return `/${btoa(JSON.stringify(config))}`;

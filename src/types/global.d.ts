@@ -26,6 +26,10 @@ declare global {
         wsProtocol?: "vl" | "tr";
         proxyMode?: "proxyip" | "prefix";
         panelIPs?: string[];
+        profile?: string;
+        profileUsersLimit?: number;
+        profileDurationDays?: number;
+        profileVolumeGB?: number;
     }
 
     interface Env {
