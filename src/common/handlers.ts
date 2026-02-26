@@ -261,9 +261,28 @@ async function getSettings(request: Request, env: Env): Promise<Response> {
 
     const dataset = await getDataset(request, env);
     const { subPath } = globalThis.httpConfig;
+    const usageBytes = Number(await env.kv.get('limits:usage-bytes')) || 0;
+    const activeSessions = Number(await env.kv.get('limits:active-sessions')) || 0;
+    const nowMs = Date.now();
+    const createdAtRaw = Number(await env.kv.get('limits:last-reset'));
+    const createdAtMs = Number.isFinite(createdAtRaw) && createdAtRaw > 0 ? createdAtRaw : nowMs;
+    const { configDurationDays, configVolumeGB, configMaxUsers } = dataset.settings;
+    const expireAtMs = configDurationDays > 0 ? createdAtMs + (configDurationDays * 86400 * 1000) : 0;
+    const remainingDays = expireAtMs > 0 ? Math.max(0, Math.ceil((expireAtMs - nowMs) / 86400000)) : -1;
+    const totalBytes = configVolumeGB > 0 ? Math.floor(configVolumeGB * 1024 * 1024 * 1024) : 0;
+    const remainingBytes = totalBytes > 0 ? Math.max(0, totalBytes - usageBytes) : -1;
 
     const data = {
         proxySettings: dataset.settings,
+        usageStats: {
+            usageBytes,
+            totalBytes,
+            remainingBytes,
+            remainingDays,
+            activeSessions,
+            maxUsers: configMaxUsers,
+            expireAt: expireAtMs
+        },
         isPassSet,
         subPath: subPath
     };

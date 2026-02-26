@@ -21,6 +21,17 @@
     </h1>
     <div class="form-container container">
         <h2><span class="material-symbols-rounded">settings</span> Settings</h2>
+        <div class="container usage-dashboard">
+            <div class="section">
+                <h4><span class="material-symbols-rounded">verified</span> Subscription Overview</h4>
+                <div class="usage-grid">
+                    <div class="usage-card"><span>Used</span><strong id="usage-used">-</strong></div>
+                    <div class="usage-card"><span>Remaining</span><strong id="usage-remaining">-</strong></div>
+                    <div class="usage-card"><span>Days left</span><strong id="usage-days-left">-</strong></div>
+                    <div class="usage-card"><span>Active Users</span><strong id="usage-active-users">-</strong></div>
+                </div>
+            </div>
+        </div>
         <form id="configForm" class="configForm" onsubmit="updateSettings(event)">
             <details>
                 <summary>

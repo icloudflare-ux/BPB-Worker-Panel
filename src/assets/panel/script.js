@@ -31,9 +31,9 @@ fetch('/panel/settings')
             throw new Error(`status ${status} - ${message}`);
         }
 
-        const { subPath, proxySettings } = body;
+        const { subPath, proxySettings, usageStats } = body;
         globalThis.subPath = encodeURIComponent(subPath);
-        initiatePanel(proxySettings);
+        initiatePanel(proxySettings, usageStats);
     })
     .catch(error => console.error("Data query error:", error.message || error))
     .finally(() => {
@@ -57,7 +57,7 @@ fetch('/panel/settings')
         });
     });
 
-function initiatePanel(proxySettings) {
+function initiatePanel(proxySettings, usageStats) {
     const {
         VLConfigs,
         TRConfigs,
@@ -72,6 +72,7 @@ function initiatePanel(proxySettings) {
     });
 
     populatePanel(proxySettings);
+    renderUsageDashboard(usageStats);
     renderPortsBlock(ports.map(Number));
     renderUdpNoiseBlock(xrayUdpNoises);
     initiateForm();
@@ -92,6 +93,34 @@ function populatePanel(proxySettings) {
         if (rowsCount) element.rows = rowsCount;
         element.value = value;
     });
+}
+
+function renderUsageDashboard(usageStats) {
+    if (!usageStats) return;
+
+    const toGB = (bytes) => `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
+    const setText = (id, value) => {
+        const elm = document.getElementById(id);
+        if (elm) elm.textContent = value;
+    };
+
+    const {
+        usageBytes,
+        remainingBytes,
+        totalBytes,
+        remainingDays,
+        activeSessions,
+        maxUsers
+    } = usageStats;
+
+    setText('usage-used', toGB(usageBytes));
+    setText('usage-remaining', remainingBytes < 0 ? '∞' : toGB(remainingBytes));
+    setText('usage-days-left', remainingDays < 0 ? '∞' : `${remainingDays} day(s)`);
+    setText('usage-active-users', `${activeSessions} / ${maxUsers || '∞'}`);
+
+    if (totalBytes > 0 && usageBytes > totalBytes) {
+        setText('usage-remaining', '0 GB');
+    }
 }
 
 function initiateForm() {

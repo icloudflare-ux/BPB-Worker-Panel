@@ -802,3 +802,37 @@ summary h3 {
         max-width: 768px;
     }
 }
+.usage-dashboard {
+    margin: 0 0 16px;
+}
+
+.usage-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.usage-card {
+    border: 1px solid var(--border-color);
+    border-radius: var(--inner-container-border-radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+}
+
+.usage-card span {
+    font-size: 0.85rem;
+    opacity: 0.85;
+}
+
+.usage-card strong {
+    font-size: 1.05rem;
+}
+
+@media (max-width: 900px) {
+    .usage-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
