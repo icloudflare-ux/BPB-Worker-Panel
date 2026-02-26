@@ -33,6 +33,21 @@
                 <a class="link" href="/panel/analytics" target="_blank" rel="noopener noreferrer">Open Analytics / Users →</a>
             </div>
         </div>
+        <div class="container usage-dashboard">
+            <div class="section">
+                <h4><span class="material-symbols-rounded">terminal</span> Custom Config Generator</h4>
+                <div class="usage-grid">
+                    <div class="usage-card"><span>User name</span><input type="text" id="genUser" placeholder="e.g. ali" /></div>
+                    <div class="usage-card"><span>Protocol</span><select id="genProtocol"><option value="vl">VLESS</option><option value="tr">Trojan</option><option value="warp">Warp</option><option value="warp-pro">Warp Pro</option></select></div>
+                    <div class="usage-card"><span>Client</span><select id="genClient"><option value="xray">xray</option><option value="sing-box">sing-box</option><option value="clash">clash</option></select></div>
+                    <div class="usage-card"><span>Type</span><select id="genType"><option value="raw">Raw</option><option value="normal">Normal</option><option value="fragment">Fragment</option></select></div>
+                    <div class="usage-card"><span>Users</span><input type="number" id="genUsers" min="1" value="1" /></div>
+                    <div class="usage-card"><span>Days</span><input type="number" id="genDays" min="0" value="30" /></div>
+                    <div class="usage-card"><span>Volume (GB)</span><input type="number" id="genGb" min="0" value="30" /></div>
+                    <div class="usage-card"><span>Share</span><button type="button" class="button" onclick="copyCustomSubLink()">Copy Custom Link</button></div>
+                </div>
+            </div>
+        </div>
         <form id="configForm" class="configForm" onsubmit="updateSettings(event)">
             <details>
                 <summary>

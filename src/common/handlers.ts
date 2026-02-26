@@ -167,7 +167,7 @@ export async function handleSubscriptions(request: Request, env: Env): Promise<R
             switch (client) {
                 case 'xray':
                 case 'sing-box':
-                    return await getURLConfigs();
+                    return await getURLConfigs(request);
 
                 default:
                     break;
@@ -633,7 +633,7 @@ async function geoLookupBatch(ipList: string[]): Promise<GeoResult[]> {
     return results;
 }
 
-export async function getURLConfigs() {
+export async function getURLConfigs(request: Request) {
     const {
         globalConfig: { userID, TrPass },
         httpConfig: { defaultHttpsPorts, client, hostName },
@@ -653,6 +653,19 @@ export async function getURLConfigs() {
             configVolumeGB
         }
     } = globalThis;
+
+    const { searchParams } = new URL(request.url);
+    const selectedProtocol = searchParams.get('protocol');
+    const selectedUser = searchParams.get('user')?.trim() || '';
+    const selectedUsersLimit = Number(searchParams.get('users'));
+    const selectedDays = Number(searchParams.get('days'));
+    const selectedVolumeGb = Number(searchParams.get('gb'));
+
+    const shouldGenerateVL = selectedProtocol ? selectedProtocol === 'vl' : VLConfigs;
+    const shouldGenerateTR = selectedProtocol ? selectedProtocol === 'tr' : TRConfigs;
+    const finalUsersLimit = Number.isFinite(selectedUsersLimit) && selectedUsersLimit > 0 ? selectedUsersLimit : configMaxUsers;
+    const finalDays = Number.isFinite(selectedDays) && selectedDays >= 0 ? selectedDays : configDurationDays;
+    const finalVolumeGb = Number.isFinite(selectedVolumeGb) && selectedVolumeGb >= 0 ? selectedVolumeGb : configVolumeGB;
 
     const buildConfig = (protocol: string, addr: string, port: number, host: string, sni: string, remark: string) => {
         const isTLS = defaultHttpsPorts.includes(port);
@@ -701,13 +714,13 @@ export async function getURLConfigs() {
             const sni = isCustomAddr ? customCdnSni : randomUpperCase(hostName);
             const host = isCustomAddr ? customCdnHost : hostName;
 
-            if (VLConfigs) {
+            if (shouldGenerateVL) {
                 const remark = generateRemark(proxyIndex, port, addr, _VL_, false, false);
                 const vlConfig = buildConfig(atob('dmxlc3M='), addr, port, host, sni, remark);
                 VLConfs += `${vlConfig}\n`;
             }
 
-            if (TRConfigs) {
+            if (shouldGenerateTR) {
                 const remark = generateRemark(proxyIndex, port, addr, _TR_, false, false);
                 const trConfig = buildConfig(atob('dHJvamFu'), addr, port, host, sni, remark);
                 TRConfs += `${trConfig}\n`;
@@ -735,10 +748,10 @@ export async function getURLConfigs() {
     const createdAtRaw = await globalThis.globalConfig.kv.get('limits:last-reset');
     const createdAtMs = Number(createdAtRaw);
     const baseMs = Number.isFinite(createdAtMs) && createdAtMs > 0 ? createdAtMs : nowMs;
-    const expire = configDurationDays > 0
-        ? Math.floor((baseMs + (configDurationDays * 86400 * 1000)) / 1000)
+    const expire = finalDays > 0
+        ? Math.floor((baseMs + (finalDays * 86400 * 1000)) / 1000)
         : 0;
-    const total = configVolumeGB > 0 ? Math.floor(configVolumeGB * 1024 * 1024 * 1024) : 0;
+    const total = finalVolumeGb > 0 ? Math.floor(finalVolumeGb * 1024 * 1024 * 1024) : 0;
     const used = Number(await globalThis.globalConfig.kv.get('limits:usage-bytes')) || 0;
     const configs = btoa(VLConfs + TRConfs + chainProxy);
 
@@ -748,10 +761,10 @@ export async function getURLConfigs() {
             'Content-Type': 'text/plain;charset=utf-8',
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'CDN-Cache-Control': 'no-store',
-            'Profile-Title': `base64:${base64EncodeUtf8(`💦 ${_project_} Raw`)}`,
+            'Profile-Title': `base64:${base64EncodeUtf8(`💦 ${selectedUser || _project_} Raw`)}`,
             'DNS': remoteDNS,
             'Subscription-Userinfo': `upload=0; download=${used}; total=${total}; expire=${expire}`,
-            'X-Max-Users': `${configMaxUsers}`
+            'X-Max-Users': `${finalUsersLimit}`
         }
     });
 }

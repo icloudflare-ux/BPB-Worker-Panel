@@ -1330,3 +1330,27 @@ function renderUdpNoiseBlock(xrayUdpNoises) {
 
     globalThis.xrayNoiseCount = xrayUdpNoises.length;
 }
+
+function copyCustomSubLink() {
+    const protocol = getElmValue('genProtocol');
+    const client = getElmValue('genClient');
+    const type = getElmValue('genType');
+    const user = getElmValue('genUser');
+    const users = getElmValue('genUsers');
+    const days = getElmValue('genDays');
+    const gb = getElmValue('genGb');
+
+    const path = protocol.startsWith('warp') ? protocol : type;
+    const app = protocol === 'warp-pro' ? (client === 'sing-box' ? 'xray' : client) : client;
+    const url = new URL(generateSubUrl(path, app, user || protocol.toUpperCase()));
+
+    if (!protocol.startsWith('warp')) {
+        url.searchParams.set('protocol', protocol);
+        if (user) url.searchParams.set('user', user);
+        url.searchParams.set('users', users);
+        url.searchParams.set('days', days);
+        url.searchParams.set('gb', gb);
+    }
+
+    copyToClipboard(url.href);
+}
