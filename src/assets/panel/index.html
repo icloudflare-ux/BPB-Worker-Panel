@@ -49,6 +49,28 @@
                 </div>
             </div>
         </div>
+        <div class="container usage-dashboard">
+            <div class="section">
+                <h4><span class="material-symbols-rounded">group</span> Users Management</h4>
+                <div style="overflow:auto;">
+                    <table id="users-management-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Protocol</th>
+                                <th>Plan</th>
+                                <th>Used</th>
+                                <th>Remaining</th>
+                                <th>Days Left</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-management-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <form id="configForm" class="configForm" onsubmit="updateSettings(event)">
             <details>
                 <summary>

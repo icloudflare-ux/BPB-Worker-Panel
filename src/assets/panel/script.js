@@ -74,6 +74,7 @@ function initiatePanel(proxySettings, usageStats, users) {
     populatePanel(proxySettings);
     renderUsageDashboard(usageStats);
     renderSavedUsers(users || []);
+    renderUsersTable(users || []);
     renderPortsBlock(ports.map(Number));
     renderUdpNoiseBlock(xrayUdpNoises);
     initiateForm();
@@ -98,6 +99,9 @@ function populatePanel(proxySettings) {
 
 function renderUsageDashboard(usageStats) {
     if (!usageStats) return;
+
+    const overviewUser = document.getElementById('overview-user');
+    if (overviewUser && overviewUser.textContent === "") overviewUser.textContent = "Global";
 
     const toGB = (bytes) => `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
     const setText = (id, value) => {
@@ -1347,6 +1351,82 @@ function renderSavedUsers(users) {
     });
 }
 
+
+async function renderUsersTable(users) {
+    const tbody = document.getElementById('users-management-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    for (const user of users) {
+        let stats = {
+            usageBytes: 0,
+            remainingBytes: -1,
+            remainingDays: -1
+        };
+
+        try {
+            const response = await fetch(`/panel/profile-stats?name=${encodeURIComponent(user.name)}`);
+            const data = await response.json();
+            if (data.success) stats = data.body;
+        } catch {}
+
+        const toGB = (bytes) => `${(bytes / (1024 ** 3)).toFixed(2)} GB`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${user.name}</td>
+            <td>${String(user.protocol).toUpperCase()}</td>
+            <td>${user.users}U / ${user.days}D / ${user.gb}GB</td>
+            <td>${toGB(stats.usageBytes || 0)}</td>
+            <td>${stats.remainingBytes < 0 ? '∞' : toGB(stats.remainingBytes)}</td>
+            <td>${stats.remainingDays < 0 ? '∞' : stats.remainingDays}</td>
+            <td>${user.status || 'active'}</td>
+            <td>
+                <button type="button" class="button" onclick="editUserProfile('${user.id}')">Edit</button>
+                <button type="button" class="button reverse" onclick="toggleUserStatus('${user.id}')">${user.status === 'suspended' ? 'Activate' : 'Suspend'}</button>
+                <button type="button" class="button reverse" onclick="deleteUserById('${user.id}')">Delete</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    }
+}
+
+function editUserProfile(id) {
+    const select = document.getElementById('savedUsers');
+    select.value = id;
+    onSavedUserChange();
+}
+
+async function toggleUserStatus(id) {
+    const user = (globalThis.savedUsers || []).find(u => u.id === id);
+    if (!user) return;
+
+    const payload = { ...user, status: user.status === 'suspended' ? 'active' : 'suspended' };
+    await fetch('/panel/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const usersResponse = await fetch('/panel/users');
+    const usersData = await usersResponse.json();
+    renderSavedUsers(usersData.body || []);
+    renderUsersTable(usersData.body || []);
+}
+
+async function deleteUserById(id) {
+    await fetch('/panel/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+
+    const usersResponse = await fetch('/panel/users');
+    const usersData = await usersResponse.json();
+    renderSavedUsers(usersData.body || []);
+    renderUsersTable(usersData.body || []);
+}
+
 async function onSavedUserChange() {
     const id = getElmValue('savedUsers');
     const user = (globalThis.savedUsers || []).find(item => item.id === id);
@@ -1405,6 +1485,7 @@ async function saveUserProfile() {
     const usersResponse = await fetch('/panel/users');
     const usersData = await usersResponse.json();
     renderSavedUsers(usersData.body || []);
+    renderUsersTable(usersData.body || []);
     alert('User profile saved ✅');
 }
 
@@ -1421,6 +1502,7 @@ async function deleteUserProfile() {
     const usersResponse = await fetch('/panel/users');
     const usersData = await usersResponse.json();
     renderSavedUsers(usersData.body || []);
+    renderUsersTable(usersData.body || []);
     document.getElementById('savedUsers').value = '';
     alert('User profile deleted 🗑️');
 }

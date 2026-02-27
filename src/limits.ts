@@ -19,6 +19,16 @@ export async function createSessionGuard(): Promise<SessionGuard> {
     } = globalThis;
 
     const now = Date.now();
+
+    if (profile) {
+        const usersRaw = await kv.get('users:profiles');
+        const users = usersRaw ? JSON.parse(usersRaw) : [];
+        const profileData = users.find((item: any) => item.name === profile);
+
+        if (profileData?.status === 'suspended') {
+            return deny('Profile is suspended.');
+        }
+    }
     const keyPrefix = profile ? `limits:profile:${profile}:` : 'limits:';
     const maxUsersLimit = profileUsersLimit && profileUsersLimit > 0 ? profileUsersLimit : configMaxUsers;
     const durationDaysLimit = profileDurationDays !== undefined ? profileDurationDays : configDurationDays;

@@ -836,3 +836,21 @@ summary h3 {
         grid-template-columns: 1fr 1fr;
     }
 }
+
+#users-management-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#users-management-table th,
+#users-management-table td {
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    font-size: 0.9rem;
+    text-align: left;
+    white-space: nowrap;
+}
+
+#users-management-table th {
+    background-color: var(--table-active-color);
+}

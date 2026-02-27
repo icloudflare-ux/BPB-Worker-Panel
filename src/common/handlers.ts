@@ -416,13 +416,16 @@ async function handleUsers(request: Request, env: Env): Promise<Response> {
             users: Number(payload.users || 1),
             days: Number(payload.days || 0),
             gb: Number(payload.gb || 0),
+            status: payload.status || 'active',
             createdAt: Date.now()
         };
 
         if (!user.name) return respond(false, HttpStatus.BAD_REQUEST, 'User name is required.');
         const existsIndex = users.findIndex((u: any) => u.name === user.name || u.id === user.id);
-        if (existsIndex >= 0) users[existsIndex] = { ...users[existsIndex], ...user };
-        else users.unshift(user);
+        if (existsIndex >= 0) {
+            const oldUser = users[existsIndex];
+            users[existsIndex] = { ...oldUser, ...user, createdAt: oldUser.createdAt || user.createdAt };
+        } else users.unshift(user);
 
         await env.kv.put('users:profiles', JSON.stringify(users.slice(0, 500)));
         return respond(true, HttpStatus.OK, '', user);
