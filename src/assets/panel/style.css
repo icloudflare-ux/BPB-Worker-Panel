@@ -804,53 +804,118 @@ summary h3 {
 }
 .usage-dashboard {
     margin: 0 0 16px;
+    padding: 14px;
+}
+
+.usage-dashboard .section {
+    padding: 6px;
+}
+
+.usage-dashboard h4 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.usage-link {
+    display: inline-block;
+    margin-top: 12px;
 }
 
 .usage-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
+}
+
+.usage-grid--overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.usage-grid--generator {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .usage-card {
     border: 1px solid var(--border-color);
     border-radius: var(--inner-container-border-radius);
-    padding: 12px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 6px;
     text-align: left;
+    background-color: var(--input-background-color);
 }
 
 .usage-card span {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     opacity: 0.85;
 }
 
 .usage-card strong {
-    font-size: 1.05rem;
+    font-size: 1rem;
 }
 
-@media (max-width: 900px) {
-    .usage-grid {
-        grid-template-columns: 1fr 1fr;
-    }
+.usage-card input,
+.usage-card select {
+    width: 100%;
+    margin: 0;
+}
+
+.generator-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.generator-actions .button {
+    min-width: 108px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 #users-management-table {
     width: 100%;
     border-collapse: collapse;
+    min-width: 680px;
 }
 
 #users-management-table th,
 #users-management-table td {
     border: 1px solid var(--border-color);
     padding: 8px;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     text-align: left;
     white-space: nowrap;
 }
 
 #users-management-table th {
     background-color: var(--table-active-color);
+}
+
+@media (max-width: 900px) {
+    .usage-grid--overview,
+    .usage-grid--generator {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .generator-actions .button {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .usage-grid--overview,
+    .usage-grid--generator {
+        grid-template-columns: 1fr;
+    }
+
+    .generator-actions .button {
+        flex: 1 1 100%;
+    }
 }
